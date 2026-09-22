@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  SELLER
+  ADMIN
+}
+
+enum StoreStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(CUSTOMER)
+  suspended Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  store    Store?
+  cart     Cart?
+  orders   Order[]
+  reviews  Review[]
+  addresses Address[]
+
+  @@map("users")
+}
+
+model Store {
+  id       Int         @id @default(autoincrement())
+  sellerId Int         @unique @map("seller_id")
+  name     String
+  description String?  @db.Text
+  status   StoreStatus @default(PENDING)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  seller     User        @relation(fields: [sellerId], references: [id])
+  products   Product[]
+  orderItems OrderItem[]
+
+  @@map("stores")
+}
+
+model Product {
+  id          Int           @id @default(autoincrement())
+  storeId     Int           @map("store_id")
+  name        String
+  description String?       @db.Text
+  price       Decimal       @db.Decimal(15, 2)
+  stock       Int           @default(0)
+  imageUrl    String?       @map("image_url")
+  status      ProductStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  store      Store      @relation(fields: [storeId], references: [id])
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  reviews    Review[]
+
+  @@map("products")
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement())
+  userId    Int        @unique @map("user_id")
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  user  User       @relation(fields: [userId], references: [id])
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int      @map("cart_id")
+  productId Int      @map("product_id")
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  cart    Cart    @relation(fields: [cartId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+  @@map("cart_items")
+}
+
+model Address {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  label      String
+  street     String   @db.Text
+  city       String
+  province   String
+  postalCode String   @map("postal_code")
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user   User    @relation(fields: [userId], references: [id])
+  orders Order[]
+
+  @@map("addresses")
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  userId      Int         @map("user_id")
+  addressId   Int?        @map("address_id")
+  total       Decimal     @db.Decimal(15, 2)
+  shippingFee Decimal     @default(0) @db.Decimal(15, 2) @map("shipping_fee")
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id])
+  address    Address?    @relation(fields: [addressId], references: [id])
+  items      OrderItem[]
+  payment    Payment?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int     @map("order_id")
+  productId Int     @map("product_id")
+  storeId   Int     @map("store_id")
+  quantity  Int
+  price     Decimal @db.Decimal(15, 2)
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  store   Store   @relation(fields: [storeId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id        Int           @id @default(autoincrement())
+  orderId   Int           @unique @map("order_id")
+  amount    Decimal       @db.Decimal(15, 2)
+  status    PaymentStatus @default(PENDING)
+  method    String        @default("SIMULATION")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  productId Int      @map("product_id")
+  rating    Int
+  comment   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+  @@map("reviews")
+}

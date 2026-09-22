@@ -1,0 +1,33 @@
+{
+  "name": "market-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 4000",
+    "build": "next build",
+    "start": "next start -p 4000",
+    "db:migrate": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:seed": "ts-node -P tsconfig.seed.json scripts/seed.ts",
+    "db:push": "prisma db push",
+    "test": "ts-node -P tsconfig.seed.json tests/run-tests.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.14.0",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.6.3",
+    "multer": "^1.4.5-lts.1",
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.3",
+    "prisma": "^5.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3"
+  }
+}
