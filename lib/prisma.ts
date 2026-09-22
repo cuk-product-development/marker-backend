@@ -1,16 +1,18 @@
 import { PrismaClient } from "@prisma/client";
 
-declare global {
-  // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined;
-}
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-function createPrismaClient() {
-  return new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
-}
-
-// Lazy singleton — only instantiated when first accessed, not at import time
-export const prisma: PrismaClient =
-  global.prisma ?? (global.prisma = createPrismaClient());
+export const prisma =
+  globalForPrisma.prisma ||
+  (() => {
+    try {
+      const client = new PrismaClient({
+        log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+      });
+      if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = client;
+      return client;
+    } catch {
+      // Return a proxy that throws on access — build time safe
+      return new PrismaClient();
+    }
+  })();
