@@ -4,13 +4,6 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import { getAuthUser, unauthorized, forbidden } from "@/lib/auth";
 import { serverError, ok, badRequest } from "@/lib/response";
-import { v2 as cloudinary } from "cloudinary";
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,17 +21,32 @@ export async function POST(req: NextRequest) {
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) return badRequest("File too large (max 5MB)");
 
-    // Convert to base64 for Cloudinary upload
+    const apiKey = process.env.IMGBB_API_KEY;
+    if (!apiKey) return badRequest("Upload not configured");
+
+    // Convert to base64
     const bytes  = await file.arrayBuffer();
     const base64 = Buffer.from(bytes).toString("base64");
-    const dataUri = `data:${file.type};base64,${base64}`;
 
-    const result = await cloudinary.uploader.upload(dataUri, {
-      folder: "tokokita",
-      transformation: [{ width: 800, height: 800, crop: "limit", quality: "auto" }],
+    // Upload to ImgBB
+    const body = new URLSearchParams();
+    body.append("key", apiKey);
+    body.append("image", base64);
+    body.append("name", file.name);
+
+    const res = await fetch("https://api.imgbb.com/1/upload", {
+      method: "POST",
+      body,
     });
 
-    return ok({ url: result.secure_url });
+    const data = await res.json();
+
+    if (!data.success) {
+      console.error("ImgBB error:", data);
+      return serverError("Upload failed");
+    }
+
+    return ok({ url: data.data.url });
   } catch (e) {
     console.error(e);
     return serverError();
